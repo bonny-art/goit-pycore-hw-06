@@ -1,110 +1,131 @@
 """
-This module provides functions to manage a dictionary of contacts where each contact
-is represented by a name and a phone number.
+This module provides functions to manage contacts using AddressBook, Record,
+Name, and Phone classes.
 
 Functions:
-- add_contact(args: list[str], contacts: Dict[str, str]) -> str:
-  Adds a new contact with the given name and phone number to the contacts dictionary.
+- add_contact(args: list[str], address_book: AddressBook) -> str:
+  Adds a new contact with the given name and phone number to the address book.
 
-- change_contact(args: list[str], contacts: Dict[str, str]) -> str:
-  Updates the phone number of an existing contact in the contacts dictionary.
+- change_contact(args: list[str], address_book: AddressBook) -> str:
+  Updates the phone number of an existing contact in the address book.
 
-- show_phone(args: list[str], contacts: Dict[str, str]) -> str:
-  Retrieves the phone number of a contact from the contacts dictionary.
+- show_phone(args: list[str], address_book: AddressBook) -> str:
+  Retrieves the phone number of a contact from the address book.
 
-- show_all(contacts: Dict[str, str]) -> Union[str, Dict[str, str]]:
-  Retrieves all contacts stored in the contacts dictionary.
+- show_all(address_book: AddressBook) -> str:
+  Retrieves all contacts stored in the address book.
 
 Usage:
 This module can be imported and used in other Python scripts to manage a collection
 of contacts. Each function handles specific operations related to adding, updating,
 and retrieving contact information.
 """
-from typing import Dict, Union
-from input_error import input_error
+
+from typing import List
+
+from bot.models import AddressBook, Record
+from bot.cli.input_error import input_error
 
 @input_error
-def add_contact(args: list[str], contacts: Dict[str, str]) -> str:
+def add_contact(args: List[str], address_book: AddressBook) -> str:
     """
-    Add a new contact with the given name and phone number to the contacts dictionary.
+    Add a new contact with the given name and phone number to the address book.
 
     Parameters:
     args (list[str]): List of arguments containing name and phone number.
-    contacts (Dict[str, str]): Dictionary containing contacts where keys are names and
-    values are phone numbers.
+    address_book (AddressBook): The address book where the contact will be added.
 
     Returns:
     str: Success or error message indicating whether the contact was added successfully
-    or if it already exists.
+    or if the phone number already exists for the contact.
     """
+    if len(args) < 2:
+        return "Insufficient arguments. Usage: add <name> <phone>"
 
-    name, phone = args
+    name_str, phone_str = args
 
-    if name in contacts:
-        return f"Contact {name} is already in contacts."
+    record = address_book.find(name_str)
 
-    contacts[name] = phone
+    if record:
+        if record.find_phone(phone_str):
+            return f"Contact {name_str} already has this phone number."
+        record.add_phone(phone_str)
+        return f"Phone number added to existing contact {name_str}."
+
+    record = Record(name_str)
+    record.add_phone(phone_str)
+    address_book.add_record(record)
     return "Contact added."
 
 @input_error
-def change_contact(args: list[str], contacts: Dict[str, str]) -> str:
+def change_contact(args: List[str], address_book: AddressBook) -> str:
     """
-    Update the phone number of an existing contact in the contacts dictionary.
+    Update the phone number of an existing contact in the address book.
 
     Parameters:
-    args (list[str]): List of arguments containing name and new phone number.
-    contacts (Dict[str, str]): Dictionary containing contacts where keys are
-    names and values are phone numbers.
+    args (list[str]): List of arguments containing name, old phone number, and new phone number.
+    address_book (AddressBook): The address book where the contact exists.
 
     Returns:
     str: Success or error message indicating whether the contact was updated
-    successfully, already has the same number, or if it was not found.
+    successfully, or if it was not found, or if the old phone number was not found.
     """
-    name, phone = args
+    if len(args) < 3:
+        return "Insufficient arguments. Usage: change <name> <old_phone> <new_phone>"
 
-    if contacts[name] == phone:
-        return f"Contact {name} already has this phone number."
+    name_str, old_phone_str, new_phone_str = args
+    record = address_book.find(name_str)
 
-    contacts[name] = phone
+    if not record:
+        return f"No contact found with name {name_str}."
+
+    if not record.find_phone(old_phone_str):
+        return f"No phone number {old_phone_str} found for contact {name_str}."
+
+    record.edit_phone(old_phone_str, new_phone_str)
     return "Contact updated."
 
 @input_error
-def show_phone(args: list[str], contacts: Dict[str, str]) -> str:
+def show_phone(args: List[str], address_book: AddressBook) -> str:
     """
-    Retrieve the phone number of a contact from the contacts dictionary.
+    Retrieve the phone number(s) of a contact from the address book.
 
     Parameters:
     args (list[str]): List of arguments containing the name of the contact.
-    contacts (Dict[str, str]): Dictionary containing contacts where keys are
-    names and values are phone numbers.
+    address_book (AddressBook): The address book where the contact exists.
 
     Returns:
-    str: Phone number of the contact if found, otherwise a message indicating
+    str: Phone number(s) of the contact if found, otherwise a message indicating
     the contact was not found.
     """
-    if len(args) > 1:
+    if len(args) != 1:
         return "Give me only name."
 
-    name = args[0]
-    return contacts[name]
+    name_str = args[0]
+    record = address_book.find(name_str)
+
+    if not record:
+        return f"No contact found with name {name_str}."
+
+    return str(record)
+
 
 @input_error
-def show_all(contacts: Dict[str, str]) -> Union[str, Dict[str, str]]:
+def show_all(address_book: AddressBook) -> str:
     """
-    Retrieve all contacts stored in the contacts dictionary.
+    Retrieve all contacts stored in the address book.
 
     Parameters:
-    contacts (Dict[str, str]): Dictionary containing contacts where keys
-    are names and values are phone numbers.
+    address_book (AddressBook): The address book containing contacts.
 
     Returns:
-    Union[str, Dict[str, str]]: A string indicating no contacts
-    if the dictionary is empty, otherwise returns the contacts dictionary.
+    str: All contacts in the address book or a message indicating it's empty.
     """
-    if not contacts:
+    if not address_book.data:
         return "No contacts."
 
-    return "\n".join(f"{name}: {phone}" for name, phone in contacts.items())
+    return str(address_book)
+
 
 if __name__ == "__main__":
     print()
